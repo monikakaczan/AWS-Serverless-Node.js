@@ -1,0 +1,56 @@
+service: dw
+
+frameworkVersion: '2'
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  lambdaHashingVersion: 20201221
+  stage: dev
+  timeout: 15
+  region: eu-north-1
+  profile: default
+
+  iamRoleStatements:
+    # Allow Scheduler lambda to write to S3
+    - Effect: "Allow"
+      Action:
+        - "s3:PutObject"
+      Resource: "*"
+
+    # Allow API lambda to read from S3
+    - Effect: "Allow"
+      Action:
+        - "s3:ListBucket"
+        - "s3:GetObject"
+      Resource: "*"
+
+package:
+  patterns:
+    - '!node_modules/**'
+    - 'node_modules/node-fetch/**'
+
+functions:
+  dw_scheduler:
+    handler: scheduler.handler
+    events:
+      - schedule: rate(31 days)
+
+  dw_api:
+    handler: api.handler
+    events: 
+      - http: 
+          path: products/{productId}
+          method: get
+          request:
+            parameters:
+              paths:
+                productId: false
+
+resources:
+  Resources:
+    DWS3Bucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: dwbucket-sku
+
